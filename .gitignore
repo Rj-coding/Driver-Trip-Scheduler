@@ -1,0 +1,105 @@
+# ===== Existing Entries =====
+.vs/
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.user
+*.suo
+
+# ===== Global (Root or Parent Folder) =====
+.env
+.env.*
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== Frontend (React - /frontend) =====
+/frontend/node_modules/
+/frontend/build/
+/frontend/.env
+/frontend/.DS_Store
+/frontend/.eslintcache
+/frontend/coverage/
+/frontend/public/static/
+/frontend/.parcel-cache/
+/frontend/.turbo/
+/frontend/.vscode/
+
+# ===== Backend (ASP.NET Core - /backend) =====
+/backend/bin/
+/backend/obj/
+/backend/.vs/
+/backend/*.db
+/backend/Migrations/
+/backend/wwwroot/lib/
+/backend/Properties/launchSettings.json
+/backend/.vscode/
+
+/backend/TestResults/
+/backend/*.trx
+/backend/*.coverage
+/backend/*.coveragexml
+
+# ASP.NET Core secrets and configs
+/backend/appsettings.Development.json
+/backend/appsettings.Production.json
+/backend/appsettings.Staging.json
+/backend/secrets.json
+
+# ===== IDE / Tool Specific =====
+.idea/
+.vscode/
+*.sln.docstates
+
+# ===== OS-Specific =====
+*.swp
+*.swo
+*.tmp
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ===== Java / JUnit =====
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.tmp
+
+# ===== Eclipse Specific =====
+.project
+.classpath
+.settings/
+.metadata/
+.recommenders/
+
+# ===== Java Build Tools =====
+target/
+build/
+
+# ===== JUnit Test Output =====
+test-output/
+surefire-reports/
+
+# ===== Backend Coverage / Test Artifacts =====
+Backend/CoverageReport/
+Backend/TestResults/
+Backend/TestResultsOld/
+Backend/coverlet.runsettings
+Backend/**/CoverageReport/
+Backend/**/coveragereport/
+Backend/**/TestResults/
+
+# ===== Local notes / generated dashboards (not for repo) =====
+Backend/DriverTripScheduler.Tests/AIPrompt.txt
+Backend/DriverTripScheduler.Tests/Git changes.txt
+Backend/DriverTripScheduler.Tests/Ticket access important links.txt
+Backend/DriverTripScheduler.Tests/MainDash.html
+Backend/DriverTripScheduler.Tests/PingsPage.html
+Backend/DriverTripScheduler.Tests/RevenueRadar3_0.html

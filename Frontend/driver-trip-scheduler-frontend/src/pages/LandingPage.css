@@ -1,0 +1,25 @@
+.landing-container {
+  background-image: url('https://images.pexels.com/photos/3543856/pexels-photo-3543856.jpeg?cs=srgb&dl=pexels-hadi-slash-3543856.jpg&fm=jpg');
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.overlay {
+  background: rgba(0, 0, 0, 0.6); /* darken the background for contrast */
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 15%;
+}

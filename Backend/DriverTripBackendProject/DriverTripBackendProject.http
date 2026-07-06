@@ -1,0 +1,6 @@
+@DriverTripBackendProject_HostAddress = http://localhost:5038
+
+GET {{DriverTripBackendProject_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
