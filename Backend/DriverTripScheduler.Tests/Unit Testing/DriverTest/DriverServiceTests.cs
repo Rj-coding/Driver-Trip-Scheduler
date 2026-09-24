@@ -1,13 +1,18 @@
-﻿using DriverTripSchedulerBackend.DTO.Drivers;
-using DriverTripSchedulerBackend.Models;
-using DriverTripSchedulerBackend.Repository.DriverRepo;
-using DriverTripSchedulerBackend.Service;
+﻿using DriverTripBackendProject.Data;
+using DriverTripBackendProject.DTO.Drivers;
+using DriverTripBackendProject.Events;
+using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Outbox;
+using DriverTripBackendProject.Repository.DriverRepo;
+using DriverTripBackendProject.Service;
+using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using DriverTripSchedulerBackend.Service.DriverServices;
+using DriverTripBackendProject.Service.DriverServices;
 
 namespace DriverTripScheduler.Tests.DriverTest
 {
@@ -16,12 +21,22 @@ namespace DriverTripScheduler.Tests.DriverTest
     {
         private DriverService _driverService;
         private Mock<IDriverRepository> _mockRepo;
+        private Mock<IOutboxWriter> _mockOutbox;
+        private Mock<IUnitOfWork> _mockUow;
 
         [TestInitialize]
         public void Setup()
         {
             _mockRepo = new Mock<IDriverRepository>();
-            _driverService = new DriverService(_mockRepo.Object);
+            _mockOutbox = new Mock<IOutboxWriter>();
+            _mockUow = new Mock<IUnitOfWork>();
+
+            var tx = new Mock<IDbContextTransaction>();
+            tx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _mockUow.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(tx.Object);
+            _mockUow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+            _driverService = new DriverService(_mockRepo.Object, _mockOutbox.Object, _mockUow.Object);
         }
 
         [TestMethod]
@@ -31,7 +46,8 @@ namespace DriverTripScheduler.Tests.DriverTest
             var dto = new DriverCreateDTO
             {
                 Name = "John",
-                PhoneNumber = "987458975"
+                PhoneNumber = "987458975",
+                Email = "john@example.com"
             };
 
             // Act
@@ -39,8 +55,14 @@ namespace DriverTripScheduler.Tests.DriverTest
 
             // Assert
             _mockRepo.Verify(repo => repo.AddAsync(It.Is<Driver>(d =>
-                d.Name == dto.Name && d.Phone == dto.PhoneNumber
+                d.Name == dto.Name && d.Phone == dto.PhoneNumber && d.Email == dto.Email
             )), Times.Once);
+
+            // The DriverCreated event is staged on the outbox in the same unit of work.
+            _mockOutbox.Verify(o => o.Add(
+                It.Is<DriverCreatedEvent>(e =>
+                    e.Name == dto.Name && e.PhoneNumber == dto.PhoneNumber && e.Email == dto.Email),
+                It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
