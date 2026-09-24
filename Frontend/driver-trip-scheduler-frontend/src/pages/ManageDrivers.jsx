@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../api';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Modal, Button, Form } from 'react-bootstrap';
@@ -9,6 +9,7 @@ export const ManageDrivers = () => {
   const [filteredDrivers, setFilteredDrivers] = useState([]);
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [driverId, setDriverId] = useState(null); // For edit mode
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -17,16 +18,17 @@ export const ManageDrivers = () => {
     setShowModal(false);
     setName('');
     setPhoneNumber('');
+    setEmail('');
     setDriverId(null);
   };
   const handleShow = () => setShowModal(true);
 
-  const apiUrl = 'http://localhost:5038/api/Driver';
+  const apiUrl = '/Driver';
   const token = localStorage.getItem('token');
 
   const fetchDrivers = async () => {
     try {
-      const response = await axios.get(apiUrl, {
+      const response = await api.get(apiUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDrivers(response.data);
@@ -51,13 +53,13 @@ export const ManageDrivers = () => {
     try {
       if (driverId === null) {
         // Create
-        await axios.post(apiUrl, { name, phoneNumber }, {
+        await api.post(apiUrl, { name, phoneNumber, email }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Driver added successfully');
       } else {
         // Update
-        await axios.put(`${apiUrl}/${driverId}`, { name, phoneNumber }, {
+        await api.put(`${apiUrl}/${driverId}`, { name, phoneNumber }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         toast.success('Driver updated successfully');
@@ -72,7 +74,7 @@ export const ManageDrivers = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`${apiUrl}/${id}`, {
+      await api.delete(`${apiUrl}/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       toast.success('Driver deleted');
@@ -130,13 +132,14 @@ export const ManageDrivers = () => {
               <th>Driver ID</th>
               <th>Name</th>
               <th>Phone Number</th>
+              <th>Email</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredDrivers.length === 0 ? (
               <tr>
-                <td colSpan="4" className="text-center">
+                <td colSpan="5" className="text-center">
                   No drivers found
                 </td>
               </tr>
@@ -146,6 +149,7 @@ export const ManageDrivers = () => {
                   <td>{driver.driverId}</td>
                   <td>{driver.name}</td>
                   <td>{driver.phoneNumber}</td>
+                  <td>{driver.email}</td>
                   <td>
                     <button
                       className="btn btn-sm btn-warning me-2"
@@ -197,6 +201,19 @@ export const ManageDrivers = () => {
                 required
               />
             </Form.Group>
+            {/* Email is only captured on create; backend DriverUpdateDTO has no Email yet. */}
+            {driverId === null && (
+              <Form.Group className="mt-3">
+                <Form.Label>Email</Form.Label>
+                <Form.Control
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </Form.Group>
+            )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={handleClose} name="cancelButton">

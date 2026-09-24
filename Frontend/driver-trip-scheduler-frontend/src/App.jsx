@@ -11,6 +11,8 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import MyTrips from './pages/MyTrips';
 import LandingPage from './pages/LandingPage';
+import ProtectedRoute, { PublicRoute } from './ProtectedRoute';
+import './api'; // registers the global 401 auto-logout interceptor at startup
 
 
 
@@ -21,14 +23,14 @@ function App() {
       <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/trips" element={<AssignTrip />} />
-        <Route path="/drivers" element={<ManageDrivers />} />
-        <Route path="/vehicles" element={<ManageVehicles />} />
-        <Route path="/viewtrips" element={<ViewTrips />} />
-        <Route path="/mytrips" element={<MyTrips />} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/trips" element={<ProtectedRoute role="Manager"><AssignTrip /></ProtectedRoute>} />
+        <Route path="/drivers" element={<ProtectedRoute role="Manager"><ManageDrivers /></ProtectedRoute>} />
+        <Route path="/vehicles" element={<ProtectedRoute role="Manager"><ManageVehicles /></ProtectedRoute>} />
+        <Route path="/viewtrips" element={<ProtectedRoute role="Manager"><ViewTrips /></ProtectedRoute>} />
+        <Route path="/mytrips" element={<ProtectedRoute role="Driver"><MyTrips /></ProtectedRoute>} />
 
       </Routes>
     </div>

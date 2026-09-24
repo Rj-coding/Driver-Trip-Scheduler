@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { api } from '../api';
 import { format } from 'date-fns';
 import { toast } from 'react-toastify';
 
 function ViewTrips() {
-  const backendUrl = 'http://localhost:5038/api';
-
   const [trips, setTrips] = useState([]);
   const [driverName, setDriverName] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
@@ -33,9 +31,9 @@ function ViewTrips() {
   const fetchReferenceData = async () => {
     try {
       const [citiesRes, driversRes, vehiclesRes] = await Promise.all([
-        axios.get(`${backendUrl}/City`),
-        axios.get(`${backendUrl}/Driver`),
-        axios.get(`${backendUrl}/Vehicle`)
+        api.get(`/City`),
+        api.get(`/Driver`),
+        api.get(`/Vehicle`)
       ]);
       setCities(citiesRes.data);
       setDrivers(driversRes.data);
@@ -48,22 +46,20 @@ function ViewTrips() {
   const fetchTrips = async (filter = false) => {
     try {
       const token = localStorage.getItem('token');
-      let url = `${backendUrl}/Trip`;
+      let url = `/Trip`;
 
       if (filter && (driverName || vehicleNumber)) {
         const params = new URLSearchParams();
         if (driverName) params.append('driverName', driverName);
         if (vehicleNumber) params.append('vehicleNumber', vehicleNumber);
-        url = `${backendUrl}/Trip/filter?${params.toString()}`;
+        url = `/Trip/filter?${params.toString()}`;
       }
 
-      const response = await fetch(url, {
+      const response = await api.get(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) throw new Error('Failed to fetch trips');
-      const data = await response.json();
-      setTrips(data);
+      setTrips(response.data);
     } catch (error) {
       console.error(error);
       toast.error('Error fetching trips');
@@ -88,8 +84,8 @@ function ViewTrips() {
   const handleEditClick = async (trip) => {
     try {
       const [originAreaRes, destinationAreaRes] = await Promise.all([
-        axios.get(`${backendUrl}/City/${trip.originCityId}/areas`),
-        axios.get(`${backendUrl}/City/${trip.destinationCityId}/areas`)
+        api.get(`/City/${trip.originCityId}/areas`),
+        api.get(`/City/${trip.destinationCityId}/areas`)
       ]);
 
       setOriginAreas(originAreaRes.data);
@@ -135,7 +131,7 @@ function ViewTrips() {
     try {
       const token = localStorage.getItem('token');
 
-      await axios.put(`${backendUrl}/Trip/${editingTrip.tripId}`, {
+      await api.put(`/Trip/${editingTrip.tripId}`, {
         tripId: editingTrip.tripId,
         originCityId: parseInt(editingTrip.originCityId),
         originAreaId: parseInt(editingTrip.originAreaId),
@@ -183,7 +179,7 @@ function ViewTrips() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.delete(`${backendUrl}/Trip/${tripId}`, {
+      const response = await api.delete(`/Trip/${tripId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -209,7 +205,7 @@ function ViewTrips() {
   //  Dynamically load areas when city changes in modal
   useEffect(() => {
     if (editingTrip?.originCityId) {
-      axios.get(`${backendUrl}/City/${editingTrip.originCityId}/areas`)
+      api.get(`/City/${editingTrip.originCityId}/areas`)
         .then(res => setOriginAreas(res.data))
         .catch(err => console.error('Error loading origin areas:', err));
     }
@@ -217,7 +213,7 @@ function ViewTrips() {
 
   useEffect(() => {
     if (editingTrip?.destinationCityId) {
-      axios.get(`${backendUrl}/City/${editingTrip.destinationCityId}/areas`)
+      api.get(`/City/${editingTrip.destinationCityId}/areas`)
         .then(res => setDestinationAreas(res.data))
         .catch(err => console.error('Error loading destination areas:', err));
     }

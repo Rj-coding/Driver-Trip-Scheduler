@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Modal, Button, Form } from "react-bootstrap";
+import { api } from "../api";
 
 export const ManageVehicles = () => {
   const [vehicles, setVehicles] = useState([]);
@@ -21,11 +22,10 @@ export const ManageVehicles = () => {
 
   const fetchVehicles = async () => {
     try {
-      const response = await fetch("http://localhost:5038/api/Vehicle", {
+      const response = await api.get("/Vehicle", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await response.json();
-      setVehicles(data);
+      setVehicles(response.data);
     } catch (error) {
       toast.error("Failed to load vehicles");
     }
@@ -40,30 +40,25 @@ export const ManageVehicles = () => {
     type: vehicleType, // must be 'type', not 'vehicleType'
   };
 
-  const url = isEdit
-    ? `http://localhost:5038/api/Vehicle/${vehicleId}`
-    : "http://localhost:5038/api/Vehicle";
-  const method = isEdit ? "PUT" : "POST";
-
   try {
-    const response = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(vehicleData),
-    });
-
-    if (response.ok) {
-      toast.success(`Vehicle ${isEdit ? "updated" : "added"} successfully`);
-      fetchVehicles();
-      handleClose();
+    if (isEdit) {
+      await api.put(`/Vehicle/${vehicleId}`, vehicleData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     } else {
-      toast.error("Failed to save vehicle");
+      await api.post("/Vehicle", vehicleData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
     }
+    toast.success(`Vehicle ${isEdit ? "updated" : "added"} successfully`);
+    fetchVehicles();
+    handleClose();
   } catch (error) {
-    toast.error("Error occurred while saving vehicle");
+    if (error.response) {
+      toast.error("Failed to save vehicle");
+    } else {
+      toast.error("Error occurred while saving vehicle");
+    }
   }
 };
 
@@ -80,19 +75,17 @@ export const ManageVehicles = () => {
     if (!window.confirm("Are you sure you want to delete this vehicle?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5038/api/Vehicle/${id}`, {
-        method: "DELETE",
+      await api.delete(`/Vehicle/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (response.ok) {
-        toast.success("Vehicle deleted");
-        fetchVehicles();
-      } else {
-        toast.error("Failed to delete vehicle");
-      }
+      toast.success("Vehicle deleted");
+      fetchVehicles();
     } catch (error) {
-      toast.error("Error occurred while deleting");
+      if (error.response) {
+        toast.error("Failed to delete vehicle");
+      } else {
+        toast.error("Error occurred while deleting");
+      }
     }
   };
 

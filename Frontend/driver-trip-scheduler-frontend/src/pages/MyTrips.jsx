@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { api } from '../api';
 import { jwtDecode } from 'jwt-decode'; 
 import { toast } from 'react-toastify';
 
 const MyTrips = () => {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const backendUrl = 'http://localhost:5038/api';
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -33,7 +31,7 @@ const MyTrips = () => {
   const fetchDriverTrips = async (username, token) => {
     try {
       const params = new URLSearchParams({ driverName: username });
-      const response = await axios.get(`${backendUrl}/Trip/filter?${params}`, {
+      const response = await api.get(`/Trip/filter?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

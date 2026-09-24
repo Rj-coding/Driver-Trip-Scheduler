@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { api } from '../api';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom'; 
 function AssignTrip() {
@@ -23,16 +23,15 @@ function AssignTrip() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const backendUrl = 'http://localhost:5038/api';
      const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const [citiesRes, driversRes, vehiclesRes] = await Promise.all([
-                    axios.get(`${backendUrl}/City`),
-                    axios.get(`${backendUrl}/Driver`),
-                    axios.get(`${backendUrl}/Vehicle`)
+                    api.get(`/City`),
+                    api.get(`/Driver`),
+                    api.get(`/Vehicle`)
                 ]);
 
                 setCities(citiesRes.data);
@@ -49,7 +48,7 @@ function AssignTrip() {
 
     useEffect(() => {
         if (originCityId) {
-            axios.get(`${backendUrl}/City/${originCityId}/areas`)
+            api.get(`/City/${originCityId}/areas`)
                 .then(res => setOriginAreas(res.data))
                 .catch(() => toast.error('Error loading origin areas.'));
         } else {
@@ -60,7 +59,7 @@ function AssignTrip() {
 
     useEffect(() => {
         if (destinationCityId) {
-            axios.get(`${backendUrl}/City/${destinationCityId}/areas`)
+            api.get(`/City/${destinationCityId}/areas`)
                 .then(res => setDestinationAreas(res.data))
                 .catch(() => toast.error('Error loading destination areas.'));
         } else {
@@ -98,7 +97,7 @@ function AssignTrip() {
     setIsSubmitting(true);
 
     try {
-        await axios.post(`${backendUrl}/Trip`, trip, {
+        await api.post(`/Trip`, trip, {
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json'
