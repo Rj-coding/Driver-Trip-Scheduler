@@ -1,9 +1,9 @@
-﻿using DriverTripSchedulerBackend.DTO;
-using DriverTripSchedulerBackend.DTO.Vehicles;
-using DriverTripSchedulerBackend.Models;
-using DriverTripSchedulerBackend.Repository.VehicleRepo;
-using DriverTripSchedulerBackend.Service;
-using DriverTripSchedulerBackend.Service.VehicleServices;
+﻿using DriverTripBackendProject.DTO;
+using DriverTripBackendProject.DTO.Vehicles;
+using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Repository.VehicleRepo;
+using DriverTripBackendProject.Service;
+using DriverTripBackendProject.Service.VehicleServices;
 using Moq;
 
 

@@ -1,9 +1,9 @@
-﻿using DriverTripSchedulerBackend.DTO.Users;
-using DriverTripSchedulerBackend.Helpers;
-using DriverTripSchedulerBackend.Models;
-using DriverTripSchedulerBackend.Repository.UserRepo;
-using DriverTripSchedulerBackend.Service;
-using DriverTripSchedulerBackend.Service.UserServices;
+﻿using DriverTripBackendProject.DTO.Users;
+using DriverTripBackendProject.Helpers;
+using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Repository.UserRepo;
+using DriverTripBackendProject.Service;
+using DriverTripBackendProject.Service.UserServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;

@@ -1,6 +1,8 @@
 ﻿using DriverTripBackendProject.Data;
 using DriverTripBackendProject.Helpers;
 using DriverTripBackendProject.MappingProfiles;
+using DriverTripBackendProject.Messaging;
+using DriverTripBackendProject.Outbox;
 using DriverTripBackendProject.Repository.DriverRepo;
 using DriverTripBackendProject.Repository.TripRepo;
 using DriverTripBackendProject.Repository.UserRepo;
@@ -37,11 +39,18 @@ builder.Services.AddScoped<ITripRepository, TripRepository>();
 builder.Services.AddScoped<IDriverRepository, DriverRepository>();
 builder.Services.AddScoped<IVehicleRepository, VehicleRepository>();
 
+// Unit of work lets a service own an explicit transaction over the shared DbContext.
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 // Register Services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITripService, TripService>();
 builder.Services.AddScoped<IDriverService, DriverService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
+
+// Outbox writer stages integration events into the current DbContext/transaction.
+// Scoped so it shares the SAME AppDbContext as the service that calls SaveChanges.
+builder.Services.AddScoped<IOutboxWriter, OutboxWriter>();
 
 builder.Services.AddSingleton<JwtHelper>();
 
@@ -105,6 +114,19 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader());
 });
 
+// RabbitMQ (Phase 1): bind options, register a single shared connection, and
+// expose broker connectivity at /health. Nothing publishes or consumes yet.
+builder.Services.Configure<RabbitMqOptions>(
+    builder.Configuration.GetSection(RabbitMqOptions.SectionName));
+builder.Services.AddSingleton<IRabbitMqConnection, RabbitMqConnection>();
+
+// Phase 3: reliably publish outbox events to RabbitMQ via a background relay.
+builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
+builder.Services.AddHostedService<OutboxRelay>();
+
+builder.Services.AddHealthChecks()
+    .AddCheck<RabbitMqHealthCheck>("rabbitmq");
+
 var app = builder.Build();
 app.UseCors("AllowFrontend");
 
@@ -124,5 +146,6 @@ app.UseHttpsRedirection();
 
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
