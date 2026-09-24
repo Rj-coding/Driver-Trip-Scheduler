@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="1180" viewBox="0 0 1140 1180" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#455a64"/>
+    </marker>
+    <style>
+      .edge   { stroke:#455a64; stroke-width:1.8; fill:none; marker-end:url(#arrow); }
+      .proc   { fill:#e3f2fd; stroke:#1565c0; stroke-width:1.6; }
+      .dec    { fill:#fff8e1; stroke:#f9a825; stroke-width:1.6; }
+      .note   { fill:#eceff1; stroke:#90a4ae; stroke-width:1.4; }
+      .store  { fill:#ede7f6; stroke:#5e35b1; stroke-width:1.6; }
+      .ok     { fill:#1b5e20; stroke:#0b3d0b; stroke-width:1.6; }
+      .skip   { fill:#e65100; stroke:#8a3400; stroke-width:1.6; }
+      .dlq    { fill:#b71c1c; stroke:#7f0f0f; stroke-width:1.6; }
+      .retry  { fill:#4e342e; stroke:#2e1f1b; stroke-width:1.6; }
+      text    { fill:#102027; font-size:13px; }
+      .w      { fill:#ffffff; }
+      .lbl    { fill:#37474f; font-size:12px; font-style:italic; }
+      .title  { fill:#102027; font-size:20px; font-weight:700; }
+      .cap    { fill:#546e7a; font-size:12px; }
+    </style>
+  </defs>
+
+  <text class="title" x="24" y="34">Driver Trip Scheduler — TripAssigned message lifecycle (with idempotency)</text>
+  <text class="cap"   x="24" y="54">Producer (Outbox) → RabbitMQ → Consumer (dedup + retry + DLQ)</text>
+
+  <!-- ===================== MAIN SPINE ===================== -->
+  <!-- 1 POST /Trip -->
+  <rect class="proc" x="300" y="74"  width="260" height="40" rx="8"/>
+  <text x="430" y="99"  text-anchor="middle">POST /Trip</text>
+
+  <!-- 2 TripService transaction -->
+  <rect class="proc" x="300" y="142" width="260" height="54" rx="8"/>
+  <text x="430" y="164" text-anchor="middle">TripService: save Trip + Outbox row</text>
+  <text x="430" y="182" text-anchor="middle">in ONE DB transaction</text>
+
+  <!-- 3 OutboxMessages (cylinder) -->
+  <g>
+    <rect class="store" x="320" y="236" width="220" height="42"/>
+    <ellipse class="store" cx="430" cy="278" rx="110" ry="9"/>
+    <ellipse class="store" cx="430" cy="236" rx="110" ry="9"/>
+    <text x="430" y="255" text-anchor="middle">OutboxMessages</text>
+    <text x="430" y="272" text-anchor="middle">(ProcessedOnUtc = NULL)</text>
+  </g>
+
+  <!-- 4 Relay -->
+  <rect class="proc" x="300" y="320" width="260" height="40" rx="8"/>
+  <text x="430" y="345" text-anchor="middle">OutboxRelay polls every 5s</text>
+
+  <!-- 5 Publish -->
+  <rect class="proc" x="300" y="388" width="260" height="58" rx="8"/>
+  <text x="430" y="410" text-anchor="middle">Publish → exchange 'trip.events'</text>
+  <text x="430" y="428" text-anchor="middle">routingKey 'trip.assigned'</text>
+  <text x="430" y="443" text-anchor="middle" class="cap">(publisher-confirm)</text>
+
+  <!-- 5b note -->
+  <rect class="note" x="640" y="390" width="250" height="54" rx="8"/>
+  <text x="765" y="412" text-anchor="middle">Set ProcessedOnUtc</text>
+  <text x="765" y="430" text-anchor="middle">after broker confirm</text>
+
+  <!-- 6 Queue (cylinder) -->
+  <g>
+    <rect class="store" x="320" y="482" width="220" height="38"/>
+    <ellipse class="store" cx="430" cy="520" rx="110" ry="9"/>
+    <ellipse class="store" cx="430" cy="482" rx="110" ry="9"/>
+    <text x="430" y="507" text-anchor="middle">Queue  q.notify.trip-assigned</text>
+  </g>
+
+  <!-- 7 Consumer -->
+  <rect class="proc" x="300" y="556" width="260" height="40" rx="8"/>
+  <text x="430" y="581" text-anchor="middle">Consumer receives delivery</text>
+
+  <!-- D1 Deserialize OK? -->
+  <polygon class="dec" points="430,616 512,660 430,704 348,660"/>
+  <text x="430" y="664" text-anchor="middle">Deserialize OK?</text>
+
+  <!-- D2 Data present? -->
+  <polygon class="dec" points="430,720 512,764 430,808 348,764"/>
+  <text x="430" y="768" text-anchor="middle">Data present?</text>
+
+  <!-- D3 EventId already processed? -->
+  <polygon class="dec" points="430,826 546,888 430,950 314,888"/>
+  <text x="430" y="884" text-anchor="middle">EventId already in</text>
+  <text x="430" y="900" text-anchor="middle">ProcessedEvents?</text>
+
+  <!-- skip node -->
+  <rect class="skip" x="632" y="862" width="256" height="52" rx="8"/>
+  <text class="w" x="760" y="884" text-anchor="middle">Duplicate → log,</text>
+  <text class="w" x="760" y="902" text-anchor="middle">ACK, skip processing</text>
+
+  <!-- Nproc ProcessAsync -->
+  <rect class="proc" x="300" y="978" width="260" height="46" rx="8"/>
+  <text x="430" y="1006" text-anchor="middle">ProcessAsync (side effect)</text>
+
+  <!-- Nok success -->
+  <rect class="ok" x="300" y="1096" width="260" height="48" rx="8"/>
+  <text class="w" x="430" y="1118" text-anchor="middle">INSERT ProcessedEvent</text>
+  <text class="w" x="430" y="1136" text-anchor="middle">then ACK</text>
+
+  <!-- D4 retryCount<3? -->
+  <polygon class="dec" points="762,978 842,1022 762,1066 682,1022"/>
+  <text x="762" y="1026" text-anchor="middle">retryCount &lt; 3?</text>
+
+  <!-- Retry queue -->
+  <g>
+    <rect class="retry" x="655" y="1092" width="214" height="52"/>
+    <ellipse class="retry" cx="762" cy="1144" rx="107" ry="8"/>
+    <ellipse class="retry" cx="762" cy="1092" rx="107" ry="8"/>
+    <text class="w" x="762" y="1114" text-anchor="middle">Retry queue</text>
+    <text class="w" x="762" y="1131" text-anchor="middle">(TTL 10s → back to main)</text>
+  </g>
+
+  <!-- DLQ tall -->
+  <rect class="dlq" x="960" y="640" width="150" height="230" rx="10"/>
+  <text class="w" x="1035" y="740" text-anchor="middle">Dead-Letter</text>
+  <text class="w" x="1035" y="760" text-anchor="middle">Queue</text>
+  <text class="w" x="1035" y="784" text-anchor="middle" font-size="11">q.notify.</text>
+  <text class="w" x="1035" y="799" text-anchor="middle" font-size="11">trip-assigned.dlq</text>
+
+  <!-- ===================== EDGES ===================== -->
+  <path class="edge" d="M430,114 L430,142"/>
+  <path class="edge" d="M430,196 L430,227"/>
+  <path class="edge" d="M430,287 L430,320"/>
+  <path class="edge" d="M430,360 L430,388"/>
+  <path class="edge" d="M560,417 L640,417"/>
+  <path class="edge" d="M430,446 L430,473"/>
+  <text class="lbl" x="446" y="466">to broker</text>
+  <path class="edge" d="M430,529 L430,556"/>
+  <path class="edge" d="M430,596 L430,616"/>
+
+  <!-- D1 -->
+  <path class="edge" d="M430,704 L430,720"/>
+  <text class="lbl" x="440" y="716">Yes</text>
+  <path class="edge" d="M512,660 L960,660"/>
+  <text class="lbl" x="600" y="652">No — malformed → DLQ</text>
+
+  <!-- D2 -->
+  <path class="edge" d="M430,808 L430,826"/>
+  <text class="lbl" x="440" y="822">Yes</text>
+  <path class="edge" d="M512,764 L960,764"/>
+  <text class="lbl" x="600" y="756">No — missing data → DLQ</text>
+
+  <!-- D3 -->
+  <path class="edge" d="M546,888 L632,888"/>
+  <text class="lbl" x="556" y="880">YES (duplicate)</text>
+  <path class="edge" d="M430,950 L430,978"/>
+  <text class="lbl" x="440" y="972">NO (new)</text>
+
+  <!-- Nproc success -->
+  <path class="edge" d="M430,1024 L430,1096"/>
+  <text class="lbl" x="440" y="1064">success</text>
+
+  <!-- Nproc transient failure -> D4 -->
+  <path class="edge" d="M560,1001 L682,1022"/>
+  <text class="lbl" x="566" y="1000">transient failure</text>
+
+  <!-- D4 Yes -> Retry -->
+  <path class="edge" d="M762,1066 L762,1092"/>
+  <text class="lbl" x="772" y="1086">Yes</text>
+
+  <!-- D4 No -> DLQ -->
+  <path class="edge" d="M842,1022 L960,860"/>
+  <text class="lbl" x="866" y="960">No → DLQ</text>
+
+  <!-- Retry loop back to Queue -->
+  <path class="edge" d="M655,1118 L250,1118 L250,501 L320,501"/>
+  <text class="lbl" x="150" y="800">redeliver after TTL</text>
+
+  <!-- skip ack (implicit) small note -->
+  <text class="lbl" x="632" y="856">(idempotency guard)</text>
+</svg>

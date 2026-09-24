@@ -1,0 +1,60 @@
+# ---------------------------------------------------------------------------
+# Driver Trip Scheduler — local RabbitMQ broker (Phase 1)
+#
+# This file describes our message broker "as code". Instead of installing
+# RabbitMQ + Erlang on the machine, we run the official image in a container.
+#
+# Start:  docker compose -f docker-compose.rabbitmq.yml up -d
+# Stop:   docker compose -f docker-compose.rabbitmq.yml down
+# UI:     http://localhost:15672   (user/pass below)
+#
+# NOTE: modern Docker Compose does not need the top-level `version:` key.
+# ---------------------------------------------------------------------------
+
+services:
+  rabbitmq:
+    # Image = the read-only "recipe". "-management" includes the web UI plugin.
+    image: rabbitmq:3.13-management
+
+    # A friendly, stable name so we can reference the container in commands.
+    container_name: dts-rabbitmq
+
+    # If it crashes or the machine reboots, bring it back automatically
+    # (but not if we deliberately stopped it).
+    restart: unless-stopped
+
+    # Credentials are override-able via environment variables, with safe
+    # local defaults. We use a dedicated user (not the built-in "guest",
+    # which only works from localhost) so a containerized API can connect later.
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dts}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-dts_password}
+
+    ports:
+      - "5672:5672"    # AMQP — the protocol our .NET app will use to publish/consume
+      - "15672:15672"  # Management UI — the web dashboard for humans
+
+    # A named volume = a durable "lunchbox". Queues/messages survive container
+    # restarts because RabbitMQ stores its data here, not inside the container.
+    volumes:
+      - dts_rabbitmq_data:/var/lib/rabbitmq
+
+    # Docker keeps checking "is the broker actually ready?" (not just started).
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    # A private network so later services (e.g. our API container) can find
+    # RabbitMQ by the name "rabbitmq" instead of an IP address.
+    networks:
+      - dts-network
+
+volumes:
+  dts_rabbitmq_data:
+
+networks:
+  dts-network:
+    driver: bridge
