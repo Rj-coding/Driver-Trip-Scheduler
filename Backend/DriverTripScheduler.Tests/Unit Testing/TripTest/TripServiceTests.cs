@@ -1,8 +1,12 @@
 ﻿using AutoMapper;
-using DriverTripSchedulerBackend.DTO.Trips;
-using DriverTripSchedulerBackend.Models;
-using DriverTripSchedulerBackend.Repository.TripRepo;
-using DriverTripSchedulerBackend.Service.TripServices;
+using DriverTripBackendProject.Data;
+using DriverTripBackendProject.DTO.Trips;
+using DriverTripBackendProject.Events;
+using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Outbox;
+using DriverTripBackendProject.Repository.TripRepo;
+using DriverTripBackendProject.Service.TripServices;
+using Microsoft.EntityFrameworkCore.Storage;
 using Moq;
 
 
@@ -13,6 +17,8 @@ namespace DriverTripScheduler.Tests
     {
         private Mock<ITripRepository> _mockRepo;
         private Mock<IMapper> _mockMapper;
+        private Mock<IOutboxWriter> _mockOutbox;
+        private Mock<IUnitOfWork> _mockUow;
         private TripService _service;
 
         [TestInitialize]
@@ -20,7 +26,15 @@ namespace DriverTripScheduler.Tests
         {
             _mockRepo = new Mock<ITripRepository>();
             _mockMapper = new Mock<IMapper>();
-            _service = new TripService(_mockRepo.Object, _mockMapper.Object);
+            _mockOutbox = new Mock<IOutboxWriter>();
+            _mockUow = new Mock<IUnitOfWork>();
+
+            var tx = new Mock<IDbContextTransaction>();
+            tx.Setup(t => t.CommitAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            _mockUow.Setup(u => u.BeginTransactionAsync(It.IsAny<CancellationToken>())).ReturnsAsync(tx.Object);
+            _mockUow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+            _service = new TripService(_mockRepo.Object, _mockMapper.Object, _mockOutbox.Object, _mockUow.Object);
         }
 
         private TripDTO GetValidTripDTO()
@@ -185,12 +199,14 @@ namespace DriverTripScheduler.Tests
             _mockMapper.Setup(m => m.Map<Trip>(dto)).Returns(tripEntity);
             _mockRepo.Setup(r => r.AddTripAsync(tripEntity)).ReturnsAsync(tripEntity);
             _mockRepo.Setup(r => r.GetTripWithDetailsByIdAsync(tripEntity.TripId)).ReturnsAsync(fullTrip);
+            _mockMapper.Setup(m => m.Map<TripResponseDTO>(fullTrip)).Returns(new TripResponseDTO { TripId = fullTrip.TripId });
 
             var result = await _service.AddTripAsync(dto);
 
             Assert.IsTrue(result.isSuccess);
             Assert.IsNull(result.errorMessage);
             Assert.IsNotNull(result.trip);
+            _mockOutbox.Verify(o => o.Add(It.IsAny<TripAssignedEvent>(), It.IsAny<string>()), Times.Once);
         }
     }
 }

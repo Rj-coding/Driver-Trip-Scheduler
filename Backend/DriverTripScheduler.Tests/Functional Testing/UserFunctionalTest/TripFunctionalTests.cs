@@ -1,4 +1,4 @@
-﻿using DriverTripSchedulerBackend.DTO.Trips;
+﻿using DriverTripBackendProject.DTO.Trips;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;

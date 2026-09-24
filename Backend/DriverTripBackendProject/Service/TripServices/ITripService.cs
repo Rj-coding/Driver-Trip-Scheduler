@@ -1,5 +1,4 @@
 ﻿using DriverTripBackendProject.DTO.Trips;
-using DriverTripBackendProject.Models;
 
 namespace DriverTripBackendProject.Service.TripServices
 {
@@ -7,9 +6,9 @@ namespace DriverTripBackendProject.Service.TripServices
     {
         Task<IEnumerable<TripResponseDTO>> GetAllTripsAsync();
 
-        Task<(bool isSuccess, string errorMessage, Trip trip)> UpdateTripAsync(TripUpdateDTO dto);
+        Task<(bool isSuccess, string errorMessage, TripResponseDTO trip)> UpdateTripAsync(TripUpdateDTO dto);
 
-        Task<(bool isSuccess, string errorMessage, Trip trip)> AddTripAsync(TripDTO dto);
+        Task<(bool isSuccess, string errorMessage, TripResponseDTO trip)> AddTripAsync(TripDTO dto);
         Task<(bool isSuccess, string errorMessage)> DeleteTripAsync(int tripId);
 
         Task<IEnumerable<TripResponseDTO>> GetTripsByFilterAsync(string driverName, string vehicleNumber);

@@ -1,6 +1,9 @@
 ﻿using AutoMapper;
+using DriverTripBackendProject.Data;
 using DriverTripBackendProject.DTO.Trips;
+using DriverTripBackendProject.Events;
 using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Outbox;
 using DriverTripBackendProject.Repository.TripRepo;
 
 namespace DriverTripBackendProject.Service.TripServices
@@ -9,11 +12,19 @@ namespace DriverTripBackendProject.Service.TripServices
     {
         private readonly ITripRepository _repo;
         private readonly IMapper _mapper;
+        private readonly IOutboxWriter _outboxWriter;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public TripService(ITripRepository repo, IMapper mapper)
+        public TripService(
+            ITripRepository repo,
+            IMapper mapper,
+            IOutboxWriter outboxWriter,
+            IUnitOfWork unitOfWork)
         {
             _repo = repo;
             _mapper = mapper;
+            _outboxWriter = outboxWriter;
+            _unitOfWork = unitOfWork;
         }
 
         public async Task<IEnumerable<TripResponseDTO>> GetAllTripsAsync()
@@ -22,7 +33,7 @@ namespace DriverTripBackendProject.Service.TripServices
             return _mapper.Map<List<TripResponseDTO>>(trips);
         }
 
-        public async Task<(bool isSuccess, string errorMessage, Trip trip)> UpdateTripAsync(TripUpdateDTO dto)
+        public async Task<(bool isSuccess, string errorMessage, TripResponseDTO trip)> UpdateTripAsync(TripUpdateDTO dto)
         {
             var existingTrip = await _repo.GetTripByIdAsync(dto.TripId);
             if (dto.TripStartTime < DateTime.Now || dto.TripEndTime < DateTime.Now)
@@ -47,13 +58,13 @@ namespace DriverTripBackendProject.Service.TripServices
             _mapper.Map(dto, existingTrip);
             var updatedTrip = await _repo.UpdateTripAsync(existingTrip);
 
-            // Re-fetch with navigation properties
+            // Re-fetch with navigation properties, then map to a flat DTO for the response
             var fullTrip = await _repo.GetTripWithDetailsByIdAsync(updatedTrip.TripId);
-            return (true, null, fullTrip);
+            return (true, null, _mapper.Map<TripResponseDTO>(fullTrip));
         }
 
 
-        public async Task<(bool isSuccess, string errorMessage, Trip trip)> AddTripAsync(TripDTO dto)
+        public async Task<(bool isSuccess, string errorMessage, TripResponseDTO trip)> AddTripAsync(TripDTO dto)
         {
 
             if (dto.TripStartTime < DateTime.Now || dto.TripEndTime < DateTime.Now)
@@ -80,12 +91,43 @@ namespace DriverTripBackendProject.Service.TripServices
 
 
             var trip = _mapper.Map<Trip>(dto);
-            var savedTrip = await _repo.AddTripAsync(trip);
 
-            //  Re-fetch trip with navigation properties
+            // Persist the trip and stage the TripAssigned event in ONE transaction so
+            // the trip row and the outbox row commit atomically (or not at all).
+            await using var transaction = await _unitOfWork.BeginTransactionAsync();
+
+            var savedTrip = await _repo.AddTripAsync(trip); // SaveChanges #1 -> TripId assigned
+
+            //  Re-fetch trip with navigation properties (names for the event + response DTO)
             var fullTrip = await _repo.GetTripWithDetailsByIdAsync(savedTrip.TripId);
-            return (true, null, fullTrip);
+
+            _outboxWriter.Add(BuildTripAssignedEvent(fullTrip!)); // stage on the same DbContext
+            await _unitOfWork.SaveChangesAsync();                 // SaveChanges #2 -> outbox row
+
+            await transaction.CommitAsync();
+
+            return (true, null, _mapper.Map<TripResponseDTO>(fullTrip));
         }
+
+        private static TripAssignedEvent BuildTripAssignedEvent(Trip trip) => new()
+        {
+            TripId = trip.TripId,
+            DriverId = trip.DriverId,
+            DriverName = trip.Driver?.Name ?? string.Empty,
+            VehicleId = trip.VehicleId,
+            VehicleNumber = trip.Vehicle?.VehicleNumber ?? string.Empty,
+            OriginCityId = trip.OriginCityId,
+            OriginCityName = trip.OriginCity?.Name ?? string.Empty,
+            OriginAreaId = trip.OriginAreaId,
+            OriginAreaName = trip.OriginArea?.Name ?? string.Empty,
+            DestinationCityId = trip.DestinationCityId,
+            DestinationCityName = trip.DestinationCity?.Name ?? string.Empty,
+            DestinationAreaId = trip.DestinationAreaId,
+            DestinationAreaName = trip.DestinationArea?.Name ?? string.Empty,
+            TripStartTime = trip.TripStartTime,
+            TripEndTime = trip.TripEndTime,
+            CreatedAt = trip.CreatedAt
+        };
 
         public async Task<(bool isSuccess, string errorMessage)> DeleteTripAsync(int tripId)
         {

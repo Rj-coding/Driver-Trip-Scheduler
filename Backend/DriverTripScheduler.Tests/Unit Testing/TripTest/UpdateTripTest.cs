@@ -1,14 +1,16 @@
 ﻿using AutoMapper;
-using DriverTripSchedulerBackend.DTO.Trips;
-using DriverTripSchedulerBackend.DTO;
-using DriverTripSchedulerBackend.Models;
-using DriverTripSchedulerBackend.Repository.TripRepo;
-using DriverTripSchedulerBackend.Service;
+using DriverTripBackendProject.Data;
+using DriverTripBackendProject.DTO.Trips;
+using DriverTripBackendProject.DTO;
+using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Outbox;
+using DriverTripBackendProject.Repository.TripRepo;
+using DriverTripBackendProject.Service;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using System;
 using System.Threading.Tasks;
-using DriverTripSchedulerBackend.Service.TripServices;
+using DriverTripBackendProject.Service.TripServices;
 
 namespace DriverTripScheduler.Tests
 {
@@ -17,6 +19,8 @@ namespace DriverTripScheduler.Tests
     {
         private Mock<ITripRepository> _mockRepo;
         private Mock<IMapper> _mockMapper;
+        private Mock<IOutboxWriter> _mockOutbox;
+        private Mock<IUnitOfWork> _mockUow;
         private TripService _service;
 
         [TestInitialize]
@@ -24,7 +28,9 @@ namespace DriverTripScheduler.Tests
         {
             _mockRepo = new Mock<ITripRepository>();
             _mockMapper = new Mock<IMapper>();
-            _service = new TripService(_mockRepo.Object, _mockMapper.Object);
+            _mockOutbox = new Mock<IOutboxWriter>();
+            _mockUow = new Mock<IUnitOfWork>();
+            _service = new TripService(_mockRepo.Object, _mockMapper.Object, _mockOutbox.Object, _mockUow.Object);
         }
 
         private TripUpdateDTO GetValidTripUpdateDTO()
@@ -138,6 +144,7 @@ namespace DriverTripScheduler.Tests
             _mockRepo.Setup(r => r.HasOverlappingTripForVehicle(dto.VehicleId, dto.TripStartTime, dto.TripEndTime, dto.TripId)).ReturnsAsync(false);
             _mockRepo.Setup(r => r.UpdateTripAsync(existingTrip)).ReturnsAsync(updatedTrip);
             _mockRepo.Setup(r => r.GetTripWithDetailsByIdAsync(dto.TripId)).ReturnsAsync(updatedTrip);
+            _mockMapper.Setup(m => m.Map<TripResponseDTO>(updatedTrip)).Returns(new TripResponseDTO { TripId = updatedTrip.TripId });
 
             var result = await _service.UpdateTripAsync(dto);
 

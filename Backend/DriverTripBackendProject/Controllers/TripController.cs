@@ -1,5 +1,4 @@
 ﻿using DriverTripBackendProject.DTO.Trips;
-using DriverTripBackendProject.Models;
 using DriverTripBackendProject.Service.TripServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +25,7 @@ namespace DriverTripSchedulerBackend.Controller
 
         [Authorize(Roles = "Manager")]
         [HttpPut("{id}")]
-        public async Task<ActionResult<Trip>> UpdateTrip(int id, [FromBody] TripUpdateDTO dto)
+        public async Task<ActionResult<TripResponseDTO>> UpdateTrip(int id, [FromBody] TripUpdateDTO dto)
         {
             if (id != dto.TripId)
                 return BadRequest("Trip ID mismatch.");
@@ -40,7 +39,7 @@ namespace DriverTripSchedulerBackend.Controller
 
         [Authorize(Roles = "Manager")]
         [HttpPost]
-        public async Task<ActionResult<Trip>> CreateTrip([FromBody] TripDTO dto)
+        public async Task<ActionResult<TripResponseDTO>> CreateTrip([FromBody] TripDTO dto)
         {
             var (isSuccess, errorMessage, trip) = await _service.AddTripAsync(dto);
             if (!isSuccess)
