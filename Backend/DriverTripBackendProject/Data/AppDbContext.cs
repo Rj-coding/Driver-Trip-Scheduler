@@ -1,4 +1,5 @@
 ﻿using DriverTripBackendProject.Models;
+using DriverTripBackendProject.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace DriverTripBackendProject.Data
@@ -18,6 +19,7 @@ namespace DriverTripBackendProject.Data
         public DbSet<City> Cities { get; set; }
         public DbSet<Area> Areas { get; set; }
         public DbSet<Trip> Trips { get; set; }
+        public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,6 +35,11 @@ namespace DriverTripBackendProject.Data
                 .WithOne(v => v.Driver)
                 .HasForeignKey<Vehicle>(v => v.DriverId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Nullable email column (max 256). Nullable keeps existing driver rows valid.
+            modelBuilder.Entity<Driver>()
+                .Property(d => d.Email)
+                .HasMaxLength(256);
 
             // One-to-many: Driver → Trips
             modelBuilder.Entity<Driver>()
@@ -70,6 +77,17 @@ namespace DriverTripBackendProject.Data
                 .WithMany()
                 .HasForeignKey(t => t.DestinationAreaId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Outbox: the relay repeatedly queries WHERE ProcessedOnUtc IS NULL,
+            // so we index that column for efficient polling.
+            modelBuilder.Entity<OutboxMessage>(entity =>
+            {
+                entity.ToTable("OutboxMessages");
+                entity.HasKey(m => m.Id);
+                entity.Property(m => m.Type).IsRequired().HasMaxLength(200);
+                entity.Property(m => m.Content).IsRequired();
+                entity.HasIndex(m => m.ProcessedOnUtc);
+            });
         }
     }
 }
